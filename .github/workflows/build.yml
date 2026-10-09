@@ -28,6 +28,8 @@ jobs:
       - name: Get python-for-android
         run: |
           git clone --branch v2024.01.21 --depth 1 https://github.com/kivy/python-for-android.git /home/runner/p4a
+          # reportlab recipe downloads from hg.reportlab.com which blocks GitHub; remove it so reportlab comes from PyPI
+          rm -rf /home/runner/p4a/pythonforandroid/recipes/reportlab
 
       - name: Browser User-Agent for downloads
         run: |
@@ -50,7 +52,7 @@ jobs:
           source.include_exts = py,png,jpg,kv,ttf
           source.exclude_dirs = .github,bin,.buildozer
           version = 1.0
-          requirements = python3,kivy==2.3.0,pillow,reportlab,charset-normalizer
+          requirements = python3,kivy==2.3.0,pillow,reportlab==4.0.9,chardet,charset-normalizer
           orientation = portrait
           fullscreen = 0
           android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
