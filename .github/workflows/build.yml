@@ -1,0 +1,87 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+
+      - name: Install buildozer
+        run: |
+          python -m pip install --upgrade pip
+          pip install cython==0.29.36 virtualenv buildozer
+
+      - name: Get python-for-android
+        run: |
+          git clone --branch v2024.01.21 --depth 1 https://github.com/kivy/python-for-android.git /home/runner/p4a
+
+      - name: Browser User-Agent for downloads
+        run: |
+          mkdir -p /home/runner/ua
+          cat > /home/runner/ua/sitecustomize.py <<'PYEOF'
+          import urllib.request
+          _op = urllib.request.build_opener()
+          _op.addheaders = [("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36")]
+          urllib.request.install_opener(_op)
+          PYEOF
+
+      - name: Write buildozer.spec
+        run: |
+          cat > buildozer.spec <<'SPECEOF'
+          [app]
+          title = Smart Land Divider
+          package.name = smartlanddivider
+          package.domain = org.surveyor
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,ttf
+          source.exclude_dirs = .github,bin,.buildozer
+          version = 1.0
+          requirements = python3,kivy==2.3.0,pillow,reportlab,charset-normalizer
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+          android.api = 33
+          android.minapi = 21
+          android.ndk = 25b
+          android.archs = arm64-v8a, armeabi-v7a
+          android.accept_sdk_license = True
+          p4a.source_dir = /home/runner/p4a
+
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          SPECEOF
+
+      - name: Build APK
+        shell: bash
+        env:
+          PYTHONPATH: /home/runner/ua
+        run: buildozer -v android debug 2>&1 | tee build.log
+
+      - name: Show failed download (if any)
+        if: failure()
+        run: |
+          echo "=== LAST DOWNLOAD LINES ==="
+          grep -n "Downloading" build.log | tail -6 || true
+          echo "=== 403 CONTEXT ==="
+          grep -n -B6 "HTTP Error 403" build.log | head -30 || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-land-divider-apk
+          path: bin/*.apk
