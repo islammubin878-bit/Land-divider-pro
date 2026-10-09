@@ -25,6 +25,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install cython==0.29.36 virtualenv buildozer
 
+      - name: Get python-for-android and fix freetype download
+        run: |
+          git clone --branch v2024.01.21 --depth 1 https://github.com/kivy/python-for-android.git /home/runner/p4a
+          grep -rn "savannah" /home/runner/p4a/pythonforandroid/recipes/freetype/__init__.py || true
+          sed -i 's#https://download.savannah.gnu.org/releases/freetype#https://downloads.sourceforge.net/project/freetype/freetype2/{version}#' /home/runner/p4a/pythonforandroid/recipes/freetype/__init__.py
+          grep -n "url" /home/runner/p4a/pythonforandroid/recipes/freetype/__init__.py
+
       - name: Build APK
         run: buildozer -v android debug
 
