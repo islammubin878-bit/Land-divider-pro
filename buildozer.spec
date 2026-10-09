@@ -1,20 +1,42 @@
-[app]
-title = Smart Land Divider
-package.name = smartlanddivider
-package.domain = org.surveyor
-source.dir = .
-source.include_exts = py,png,jpg,kv,ttf
-source.exclude_dirs = .github,bin,.buildozer
-version = 1.0
-requirements = python3,kivy==2.3.0,pillow,reportlab,charset-normalizer
-orientation = portrait
-fullscreen = 0
-android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
-android.api = 33
-android.minapi = 21
-android.archs = arm64-v8a, armeabi-v7a
-android.accept_sdk_license = True
+name: Build APK
 
-[buildozer]
-log_level = 2
-warn_on_root = 1
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+
+      - name: Install buildozer
+        run: |
+          python -m pip install --upgrade pip
+          pip install cython==0.29.36 virtualenv buildozer
+
+      - name: Get python-for-android and fix freetype download
+        run: |
+          git clone --branch v2024.01.21 --depth 1 https://github.com/kivy/python-for-android.git /home/runner/p4a
+          grep -rn "savannah" /home/runner/p4a/pythonforandroid/recipes/freetype/__init__.py || true
+          sed -i 's#https://download.savannah.gnu.org/releases/freetype#https://downloads.sourceforge.net/project/freetype/freetype2/{version}#' /home/runner/p4a/pythonforandroid/recipes/freetype/__init__.py
+          grep -n "url" /home/runner/p4a/pythonforandroid/recipes/freetype/__init__.py
+
+      - name: Build APK
+        run: buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-land-divider-apk
+          path: bin/*.apk
