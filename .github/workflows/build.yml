@@ -15,6 +15,11 @@ jobs:
         with:
           python-version: '3.10'
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -77,10 +82,12 @@ jobs:
       - name: Show failed download (if any)
         if: failure()
         run: |
-          echo "=== LAST DOWNLOAD LINES ==="
-          grep -n "Downloading" build.log | tail -6 || true
-          echo "=== 403 CONTEXT ==="
-          grep -n -B6 "HTTP Error 403" build.log | head -30 || true
+          echo "=== JAVA ==="
+          java -version 2>&1 | head -3
+          echo "=== ERROR LINES ==="
+          grep -n -E "What went wrong|FAILURE|BUILD FAILED|error:|Execution failed|requires Java|Exception" build.log | tail -20 || true
+          echo "=== LAST 403 ==="
+          grep -n -B3 "HTTP Error 403" build.log | tail -10 || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
