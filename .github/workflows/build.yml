@@ -72,6 +72,10 @@ jobs:
           log_level = 2
           warn_on_root = 1
           SPECEOF
+          if [ -f icon.png ]; then
+            sed -i '/^title = /a icon.filename = %(source.dir)s/icon.png' buildozer.spec
+          fi
+          cat buildozer.spec
 
       - name: Build APK
         shell: bash
